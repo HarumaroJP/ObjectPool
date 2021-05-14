@@ -14,9 +14,15 @@ namespace Harumaro.ObjectPool {
         where T1 : ObjectPool<T1, T2> where T2 : MonoBehaviour, IPoolable<T2> {
 
         [SerializeField] protected GameObject prefab;
-        protected int m_entityCount;
+        public int Count => Pool.Count;
+        public int Capacity => m_capacity;
+        protected int m_capacity;
         protected Queue<IPoolable<T2>> Pool;
-        protected bool IsActive = false;
+
+        public bool IsActive => m_isActive;
+        protected bool m_isActive = false;
+        public bool IsFixed => m_isFixed;
+        protected bool m_isFixed;
 
 
         protected void Awake() {
@@ -24,26 +30,28 @@ namespace Harumaro.ObjectPool {
         }
 
 
-        public void CreatePool(int entityCount) {
-            if (IsActive) {
+        public void CreatePool(int capacity, bool isFixed) {
+            if (m_isActive) {
                 Debug.LogWarning("Poolは既に生成されています！");
                 return;
             }
 
             if (prefab == null) {
                 Debug.LogError("Prefabがセットされていません！");
+                return;
             }
 
-            m_entityCount = entityCount;
-            Pool = new Queue<IPoolable<T2>>(entityCount);
+            m_capacity = capacity;
+            Pool = new Queue<IPoolable<T2>>(capacity);
 
-            for (int i = 0; i < entityCount; i++) {
+            for (int i = 0; i < capacity; i++) {
                 T2 obj = Instantiate(prefab, transform).GetComponent<T2>();
                 obj.gameObject.SetActive(false);
                 Pool.Enqueue(obj);
             }
 
-            IsActive = true;
+            m_isActive = true;
+            m_isFixed = isFixed;
         }
 
 
@@ -55,8 +63,9 @@ namespace Harumaro.ObjectPool {
             }
 
             Pool.Clear();
-            m_entityCount = 0;
-            IsActive = false;
+            m_capacity = 0;
+            m_isActive = false;
+            m_isFixed = true;
         }
 
 
@@ -80,6 +89,7 @@ namespace Harumaro.ObjectPool {
 
         public void Catch(IPoolable<T2> obj) {
             if (!PoolIsAvailable()) return;
+            if (!CanDequeue()) return;
 
             obj.OnCatched();
             obj.Entity.gameObject.SetActive(false);
@@ -88,11 +98,21 @@ namespace Harumaro.ObjectPool {
 
 
         bool PoolIsAvailable() {
-            if (!IsActive) {
+            if (!m_isActive) {
                 Debug.LogError("PoolがActiveではありません！");
             }
 
-            return IsActive;
+            return m_isActive;
+        }
+
+
+        bool CanDequeue() {
+            bool canDequeue = m_isFixed && Pool.Count < m_capacity;
+            if (!canDequeue) {
+                Debug.LogWarning("Poolの許容値を超えています！");
+            }
+
+            return canDequeue;
         }
 
 

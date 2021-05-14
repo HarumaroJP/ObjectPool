@@ -6,7 +6,7 @@ using UnityEngine;
 
 public class BulletPool : ObjectPool<BulletPool, Bullet> {
     private void Start() {
-        CreatePool(100);
+        CreatePool(100, true);
     }
 
 
